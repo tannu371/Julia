@@ -1,0 +1,1939 @@
+### A Pluto.jl notebook ###
+# v0.17.3
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ abd0bdac-70d3-11ec-2c74-c758d34f3893
+begin
+	using CalculusWithJulia
+	using Plots
+	using SymPy
+	using QuadGK
+end
+
+# ╔═╡ abd0c0f4-70d3-11ec-03b8-6f29b73a25be
+begin
+	using CalculusWithJulia.WeaveSupport
+	import PyPlot
+	pyplot()
+	fig_size=(600, 400)
+	
+	nothing
+end
+
+# ╔═╡ abd1898a-70d3-11ec-1c6f-93c7bb9212ff
+using PlutoUI
+
+# ╔═╡ abd1896c-70d3-11ec-3b3a-05585773b04a
+HTML("""
+<div class="admonition info">
+<a href="https://CalculusWithJulia.github.io">
+<img src="https://raw.githubusercontent.com/jverzani/CalculusWithJulia.jl/master/CwJ/misc/logo.png" alt="Calculus with Julia" width="48" />
+</a>
+<span style="font-size:32px">Calculus With Julia</span>
+</div>
+""")
+
+
+# ╔═╡ abd0b7e4-70d3-11ec-13fd-41863fdf7d74
+md"""# Improper Integrals
+"""
+
+# ╔═╡ abd0b816-70d3-11ec-2a07-2b6c8206d57b
+md"""This section uses these add-on packages:
+"""
+
+# ╔═╡ abd0c11c-70d3-11ec-20e9-990c96a5b43f
+md"""---
+"""
+
+# ╔═╡ abd0c16c-70d3-11ec-3e34-0f1edb495e95
+md"""A function $f(x)$ is Riemann integrable over an interval $[a,b]$ if some limit involving Riemann sums exists. This limit will fail to exist if $f(x) = \infty$ in $[a,b]$. As well, the Riemann sum idea is undefined if either $a$ or $b$ (or both) are infinite, so the limit won't exist in this case.
+"""
+
+# ╔═╡ abd0c180-70d3-11ec-28ad-997cc54aefff
+md"""To define integrals  with either functions having singularities or infinite domains, the idea of an improper integral is introduced with definitions to handle the two cases above.
+"""
+
+# ╔═╡ abd0ee42-70d3-11ec-38eb-f561ce215b52
+let
+	### {{{sqrt_graph}}}
+	
+	function make_sqrt_x_graph(n)
+	
+	    b = 1
+	    a = 1/2^n
+	    xs = range(1/2^8, stop=b, length=250)
+	    x1s = range(a, stop=b, length=50)
+	    f(x) = 1/sqrt(x)
+	    val = N(integrate(f, 1/2^n, b))
+	    title = "area under f over [1/$(2^n), $b] is $(rpad(round(val, digits=2), 4))"
+	
+	    plt = plot(f, range(a, stop=b, length=251), xlim=(0,b), ylim=(0, 15), legend=false, size=fig_size, title=title)
+	    plot!(plt,  [b, a, x1s...], [0, 0, map(f, x1s)...], linetype=:polygon, color=:orange)
+	
+	    plt
+	
+	
+	end
+	caption = L"""
+	
+	Area under $1/\sqrt{x}$ over $[a,b]$ increases as $a$ gets closer to $0$. Will it grow unbounded or have a limit?
+	
+	"""
+	n = 10
+	anim = @animate for i=1:n
+	    make_sqrt_x_graph(i)
+	end
+	
+	imgfile = tempname() * ".gif"
+	gif(anim, imgfile, fps = 1)
+	
+	ImageFile(imgfile, caption)
+end
+
+# ╔═╡ abd0ee80-70d3-11ec-2e87-9938f53548fe
+md"""## Infinite domains
+"""
+
+# ╔═╡ abd0eea8-70d3-11ec-29d7-abe75cf269b9
+md"""Let $f(x)$ be a reasonable function, so reasonable that for any $a < b$ the function is Riemann integrable, meaning $\int_a^b f(x)dx$ exists.
+"""
+
+# ╔═╡ abd0eebc-70d3-11ec-0527-59d55a335ec9
+md"""What needs to be the case so that we can discuss the integral over the entire real number line?
+"""
+
+# ╔═╡ abd0eeda-70d3-11ec-1989-a19d6bfe89f3
+md"""Clearly something. The function $f(x) = 1$ is reasonable by the idea above. Clearly the integral over and $[a,b]$ is just $b-a$, but the limit over an unbounded domain would be $\infty$. Even though limits of infinity can be of interest in some cases, not so here. What will ensure that the area is finite over an infinite region?
+"""
+
+# ╔═╡ abd0ef02-70d3-11ec-3b82-2f648b200fdb
+md"""Or is that even the right question. Now consider $f(x) = \sin(\pi x)$. Over every interval of the type $[-2n, 2n]$ the area is $0$, and over any interval, $[a,b]$ the area never gets bigger than $2$. But still this function does not have a well defined area on an infinite domain.
+"""
+
+# ╔═╡ abd0ef20-70d3-11ec-2aee-35603e895a37
+md"""The right question involves a limit. Fix a finite $a$. We define the definite integral over $[a,\infty)$ to be
+"""
+
+# ╔═╡ abd0ef46-70d3-11ec-3dc5-ddc30a8b5b61
+md"""```math
+\int_a^\infty f(x) dx = \lim_{M \rightarrow \infty} \int_a^M f(x) dx,
+```
+"""
+
+# ╔═╡ abd0ef66-70d3-11ec-28a9-b58e12dfa17a
+md"""when the limit exists. Similarly, we define the definite integral over $(-\infty, a]$ through
+"""
+
+# ╔═╡ abd0ef78-70d3-11ec-3491-db85dda7b282
+md"""```math
+\int_{-\infty}^a f(x) dx  = \lim_{M \rightarrow -\infty} \int_M^a f(x) dx.
+```
+"""
+
+# ╔═╡ abd0efa2-70d3-11ec-2eea-dda776c9f61e
+md"""For the interval $(-\infty, \infty)$ we have need *both* these limits to exist, and then:
+"""
+
+# ╔═╡ abd0efb6-70d3-11ec-0783-6dd1f079a97d
+md"""```math
+\int_{-\infty}^\infty f(x) dx  = \lim_{M \rightarrow -\infty} \int_M^a f(x) dx + \lim_{M \rightarrow \infty} \int_a^M f(x) dx.
+```
+"""
+
+# ╔═╡ abd0f574-70d3-11ec-08f9-cd0562c2aa26
+note("""When the integral exists, it is said to *converge*. If it doesn't exist, it is said to *diverge*.
+""")
+
+# ╔═╡ abd0f5b0-70d3-11ec-19a8-bfbacebc4cd5
+md"""##### Examples
+"""
+
+# ╔═╡ abd0f6a0-70d3-11ec-3802-bf274244d60d
+md"""  * The function $f(x) = 1/x^2$ is integrable over $[1, \infty)$, as this limit exists:
+"""
+
+# ╔═╡ abd0f77c-70d3-11ec-3c7e-3f605c8b1bad
+md"""```math
+\lim_{M \rightarrow \infty} \int_1^M \frac{1}{x^2}dx = \lim_{M \rightarrow \infty} -\frac{1}{x}\big|_1^M
+= \lim_{M \rightarrow \infty} 1 - \frac{1}{M} = 1.
+```
+"""
+
+# ╔═╡ abd0f7c2-70d3-11ec-0268-6134ae03aa5f
+md"""  * The function $f(x) = 1/x^{1/2}$ is not integrable over $[1, \infty)$, as this limit fails to exist:
+"""
+
+# ╔═╡ abd0f7d6-70d3-11ec-15b5-3752482dd7a2
+md"""```math
+\lim_{M \rightarrow \infty} \int_1^M \frac{1}{x^{1/2}}dx = \lim_{M \rightarrow \infty} \frac{x^{1/2}}{1/2}\big|_1^M
+= \lim_{M \rightarrow \infty} 2\sqrt{M} - 2 = \infty.
+```
+"""
+
+# ╔═╡ abd0f7f4-70d3-11ec-12ee-9dab2d2c4b4d
+md"""The limit is infinite, so does not exist except in an extended sense.
+"""
+
+# ╔═╡ abd0f830-70d3-11ec-1b6b-4f5cbcc1b70a
+md"""  * The function $x^n e^{-x}$ for $n = 1, 2, \dots$ is integrable over $[0,\infty)$.
+"""
+
+# ╔═╡ abd0f84e-70d3-11ec-2d72-fd5b16a8b802
+md"""Before showing this, we recall the fundamental theorem of calculus. The limit existing is the same as saying the limit of $F(M) - F(a)$ exists for an antiderivative of $f(x)$.
+"""
+
+# ╔═╡ abd0f876-70d3-11ec-1857-d5d0c4601f28
+md"""For this particular problem, it can be shown by integration by parts that for positive, integer values of $n$ that an antiderivative exists of the form $F(x) = p(x)e^{-x}$, where $p(x)$ is a polynomial of degree $n$. But we've seen that for any $n>0$, $\lim_{x \rightarrow \infty} x^n e^{-x} = 0$, so the same is true for any polynomial. So, $\lim_{M \rightarrow \infty} F(M) - F(1) = -F(1)$.
+"""
+
+# ╔═╡ abd0f8b2-70d3-11ec-1ce6-17338341663e
+md"""  * The function $e^x$ is integrable over $(-\infty, a]$ but not
+"""
+
+# ╔═╡ abd0f8c6-70d3-11ec-3a3f-633c30272f37
+md"""```math
+[a, \infty)
+```
+"""
+
+# ╔═╡ abd0f8e4-70d3-11ec-03dd-9f177edb9823
+md"""for any finite $a$. This is because, $F(M) = e^x$ and this has a limit as $x$ goes to $-\infty$, but not $\infty$.
+"""
+
+# ╔═╡ abd0f9fc-70d3-11ec-0868-13f8379cc275
+md"""  * Let $f(x) = x e^{-x^2}$. This function has an integral over $[0, \infty)$ and more generally $(-\infty, \infty)$. To see, we note that as it is an odd function, the area from $0$ to $M$ is the opposite sign of that from $-M$ to $0$. So $\lim_{M \rightarrow \infty} (F(M) - F(0)) = \lim_{M \rightarrow -\infty} (F(0) - (-F(\lvert M\lvert)))$. We only then need to investigate the one limit. But we can see by substitution with $u=x^2$, that an antiderivative is $F(x) = (-1/2) \cdot e^{-x^2}$. Clearly, $\lim_{M \rightarrow \infty}F(M) = 0$, so the answer is well defined, and the area from $0$ to $\infty$ is just $e/2$. From $-\infty$ to $0$ it is $-e/2$ and the total area is $0$, as the two sides "cancel" out.
+  * Let $f(x) = \sin(x)$. Even though $\lim_{M \rightarrow \infty} (F(M) - F(-M) ) = 0$, this function is not integrable. The fact is we need *both* the limit $F(M)$ and $F(-M)$ to exist as $M$ goes to $\infty$. In this case, even though the area cancels if $\infty$ is approached at the same rate, this isn't sufficient to guarantee the two limits exists independently.
+"""
+
+# ╔═╡ abd0fa2e-70d3-11ec-0dec-4d4ffa4ab72b
+md"""  * Will the function $f(x) = 1/(x\cdot(\log(x))^2)$ have an integral over $[e, \infty)$?
+"""
+
+# ╔═╡ abd0fa4c-70d3-11ec-2bca-e3daea46cfc7
+md"""We first find an antiderivative using the $u$-substitution $u(x) = \log(x)$:
+"""
+
+# ╔═╡ abd0fa54-70d3-11ec-3f1b-3f9cbb39632a
+md"""```math
+\int_e^M \frac{e}{x \log(x)^{2}} dx
+= \int_{\log(e)}^{\log(M)} \frac{1}{u^{2}} du
+= \frac{-1}{u} \big|_{1}^{\log(M)}
+= \frac{-1}{\log(M)} - \frac{-1}{1}
+= 1 - \frac{1}{M}.
+```
+"""
+
+# ╔═╡ abd0fa6a-70d3-11ec-1ab3-af10490adcdd
+md"""As $M$ goes to $\infty$, this will converge to $1$.
+"""
+
+# ╔═╡ abd0face-70d3-11ec-016b-fdaeccac9f76
+md"""  * The sinc function $f(x) = \sin(\pi x)/(\pi x)$ does not have a nice antiderivative.  Seeing if the limit exists is a bit of a problem. However, this function is important enough that there is a built-in function, `Si`, that computes $\int_0^x \sin(u)/u\cdot du$. This function can be used through `sympy.Si(...)`:
+"""
+
+# ╔═╡ abd0fe5a-70d3-11ec-28d8-85b7d3434345
+begin
+	@syms M
+	limit(sympy.Si(M), M => oo)
+end
+
+# ╔═╡ abd0fea2-70d3-11ec-17f9-a5b968af6409
+md"""### Numeric integration
+"""
+
+# ╔═╡ abd0fede-70d3-11ec-0b43-a1e2888acaa2
+md"""The `quadgk` function (available through `QuadGK`) is able to accept `Inf` and `-Inf` as endpoints of the interval. For example, this will integrate $e^{-x^2/2}$ over the real line:
+"""
+
+# ╔═╡ abd10438-70d3-11ec-0f69-e3fb61bad456
+begin
+	f(x) = exp(-x^2/2)
+	quadgk(f, -Inf, Inf)
+end
+
+# ╔═╡ abd10460-70d3-11ec-167d-e5d5c3e338f7
+md"""(If may not be obvious, but this is $\sqrt{2\pi}$.)
+"""
+
+# ╔═╡ abd1047e-70d3-11ec-1b79-2fbe634568ba
+md"""## Singularities
+"""
+
+# ╔═╡ abd1049e-70d3-11ec-36c1-11c31bc88d04
+md"""Suppose $\lim_{x \rightarrow c}f(x) = \infty$ or $-\infty$. Then a Riemann sum that contains an interval including $c$ will not be finite if the point chosen in the interval is $c$. Though we could choose another point, this is not enough as the definition must hold for any choice of the $c_i$.
+"""
+
+# ╔═╡ abd104b0-70d3-11ec-281c-11c1c2dbb570
+md"""However, if $c$ is isolated, we can get close to $c$ and see how the area changes.
+"""
+
+# ╔═╡ abd104d8-70d3-11ec-3236-3fe62ca265ad
+md"""Suppose $a < c$, we define $\int_a^c f(x) dx = \lim_{M \rightarrow c-} \int_a^c f(x) dx$. If this limit exists, the definite integral with $c$ is well defined. Similarly, the integral from $c$ to $b$, where $b > c$, can be defined by a right limit going to $c$. The integral from $a$ to $b$ will exist if both the limits are finite.
+"""
+
+# ╔═╡ abd104ec-70d3-11ec-237a-29ca29f451db
+md"""##### Examples
+"""
+
+# ╔═╡ abd1055a-70d3-11ec-0c6a-4145bfde2c43
+md"""  * Consider the example of the initial illustration, $f(x) = 1/\sqrt{x}$ at $0$. Here $f(0)= \infty$, so the usual notion of a limit won't apply to $\int_0^1 f(x) dx$. However,
+"""
+
+# ╔═╡ abd1056e-70d3-11ec-1447-b7229d33723c
+md"""```math
+\lim_{M \rightarrow 0+} \int_M^1 \frac{1}{\sqrt{x}} dx
+= \lim_{M \rightarrow 0+} \frac{\sqrt{x}}{1/2} \big|_M^1
+= \lim_{M \rightarrow 0+} 2(1) - 2\sqrt{M} = 2.
+```
+"""
+
+# ╔═╡ abd10f1e-70d3-11ec-31dd-5f9507e89fcc
+note(L"""
+
+The cases $f(x) = x^{-n}$ for $n > 0$ are tricky to keep straight. For $n > 1$, the functions can be integrated over $[1,\infty)$, but not $(0,1]$. For $0 < n < 1$, the functions can be integrated over $(0,1]$ but not $[1, \infty)$.
+
+""")
+
+# ╔═╡ abd10f96-70d3-11ec-1b79-81ed9175b08e
+md"""  * Now consider $f(x) = 1/x$. Is this integral  $\int_0^1 1/x \cdot dx$ defined? It will be *if* this limit exists:
+"""
+
+# ╔═╡ abd10fac-70d3-11ec-1b18-c7d5c55e1474
+md"""```math
+\lim_{M \rightarrow 0+} \int_M^1 \frac{1}{x} dx
+= \lim_{M \rightarrow 0+} \log(x) \big|_M^1
+= \lim_{M \rightarrow 0+} \log(1) - \log(M) = \infty.
+```
+"""
+
+# ╔═╡ abd10fd2-70d3-11ec-147a-01e2f053f955
+md"""As the limit does not exist, the function is not integrable around $0$.
+"""
+
+# ╔═╡ abd11036-70d3-11ec-1737-63026699eb8d
+md"""  * `SymPy` may give answers which do not coincide with our definitions, as it uses complex numbers as a default assumption. In this case it returns the proper answer when integrated from $0$ to $1$ and `NaN` for an integral over $(-1,1)$:
+"""
+
+# ╔═╡ abd1137e-70d3-11ec-00fd-8de982eb3142
+begin
+	@syms x
+	integrate(1/x, (x, 0, 1)), integrate(1/x, (x, -1, 1))
+end
+
+# ╔═╡ abd113d8-70d3-11ec-09fa-9b2588839a69
+md"""  * Suppose you know $\int_1^\infty x^2 f(x) dx$ exists. Does this imply $\int_0^1 f(1/x) dx$ exists?
+"""
+
+# ╔═╡ abd113f6-70d3-11ec-21ff-c142e9e58ce5
+md"""We need to consider the limit of $\int_M^1 f(1/x) dx$. We try the $u$-substitution $u(x) = 1/x$. This gives $du = -(1/x^2)dx = -u^2 dx$. So, the substitution becomes:
+"""
+
+# ╔═╡ abd11416-70d3-11ec-118a-6fba45b1673c
+md"""```math
+\int_M^1 f(1/x) dx = \int_{1/M}^{1/1} f(u) (-u^2) du = \int_1^{1/M} u^2 f(u) du.
+```
+"""
+
+# ╔═╡ abd11432-70d3-11ec-2af6-4b88abbf53ca
+md"""But the limit as $M \rightarrow 0$ of $1/M$ is the same going to $\infty$, so the right side will converge by the assumption. Thus we get $f(1/x)$ is integrable over $(0,1]$.
+"""
+
+# ╔═╡ abd11444-70d3-11ec-0b5e-37e409c64d46
+md"""### Numeric integration
+"""
+
+# ╔═╡ abd1146e-70d3-11ec-3daf-07d642815238
+md"""So far our use of the `quadgk` function specified the region to integrate via `a`, `b`, as in `quadgk(f, a, b)`. In fact, it can specify values in between for which the function should not be sampled. For example, were we to integrate $1/\sqrt{\lvert x\rvert}$ over $[-1,1]$, we would want to avoid $0$ as a point to sample. Here is how:
+"""
+
+# ╔═╡ abd1195a-70d3-11ec-3ef3-e3ad6007a4bf
+let
+	f(x) = 1 / sqrt(abs(x))
+	quadgk(f, -1, 0, 1)
+end
+
+# ╔═╡ abd11996-70d3-11ec-2615-9725bdc31963
+md"""Just trying `quadgk(f, -1, 1)` leads to a `DomainError`, as `0` will be one of the points sampled. The general call is like `quadgk(f, a, b, c, d,...)` which integrates over $(a,b)$ and $(b,c)$ and $(c,d)$, $\dots$. The algorithm is not supposed to evaluate the function at the endpoints of the intervals.
+"""
+
+# ╔═╡ abd119b2-70d3-11ec-2128-d3c54a38d7ec
+md"""## Probability applications
+"""
+
+# ╔═╡ abd119d2-70d3-11ec-1262-f1d01701f103
+md"""A probability density is a function $f(x) \geq 0$ which is integrable on $(-\infty, \infty)$ and for which $\int_{-\infty}^\infty f(x) dx =1$. The cumulative distribution function is defined by $F(x)=\int_{-\infty}^x f(u) du$.
+"""
+
+# ╔═╡ abd119dc-70d3-11ec-25f5-fdf70def9f1b
+md"""Probability densities are good example of using improper integrals.
+"""
+
+# ╔═╡ abd11a22-70d3-11ec-2af7-7191b86cc390
+md"""  * Show that $f(x) = (1/\pi) (1/(1 + x^2))$ is a probability density function.
+"""
+
+# ╔═╡ abd11a40-70d3-11ec-2e34-0383baf4f6a9
+md"""We need to show that the integral exists and is $1$. For this, we use the fact that $(1/\pi) \cdot \tan^{-1}(x)$ is an antiderivative. Then we have:
+"""
+
+# ╔═╡ abd11a54-70d3-11ec-28ba-a106073086b9
+md"""```math
+\lim_{M \rightarrow \infty} F(M) = (1/\pi) \cdot \pi/2
+```
+"""
+
+# ╔═╡ abd11a68-70d3-11ec-1c24-9fb3a043da75
+md"""and as $\tan^{-1}(x)$ is odd, we must have $F(-\infty) = \lim_{M \rightarrow -\infty} f(M) = -(1/\pi) \cdot \pi/2$. All told, $F(\infty) - F(-\infty) = 1/2 - (-1/2) = 1$.
+"""
+
+# ╔═╡ abd11aa4-70d3-11ec-1254-49797f17f962
+md"""  * Show that $f(x) = 1/(b-a)$ for $a \leq x \leq b$ and $0$ otherwise is a probability density.
+"""
+
+# ╔═╡ abd11acc-70d3-11ec-002e-d30d1351deb0
+md"""The integral for $-\infty$ to $a$ of $f(x)$ is just an integral of the constant $0$, so will be $0$. (This is the only constant with finite area over an infinite domain.) Similarly, the integral from $b$ to $\infty$ will be $0$. This means:
+"""
+
+# ╔═╡ abd11ae0-70d3-11ec-179f-1d5567d9786a
+md"""```math
+\int_{-\infty}^\infty f(x) dx = \int_a^b \frac{1}{b-a} dx = 1.
+```
+"""
+
+# ╔═╡ abd11afe-70d3-11ec-29ff-d595144a7452
+md"""(One might also comment that $f$ is Riemann integrable on any $[0,M]$ despite being discontinuous at $a$ and $b$.)
+"""
+
+# ╔═╡ abd11b3a-70d3-11ec-27b5-33eeb227d12d
+md"""  * Show that if $f(x)$ is a probability density then so is $f(x-c)$ for any $c$.
+"""
+
+# ╔═╡ abd11b4c-70d3-11ec-2afe-8181cc2b8272
+md"""We have by the $u$-substitution
+"""
+
+# ╔═╡ abd11b62-70d3-11ec-3283-e93074c7859e
+md"""```math
+\int_{-\infty}^\infty f(x-c)dx = \int_{u(-\infty)}^{u(\infty)} f(u) du = \int_{-\infty}^\infty f(u) du = 1.
+```
+"""
+
+# ╔═╡ abd11b7e-70d3-11ec-395f-ab970134657b
+md"""The key is that we can use the regular $u$-substitution formula provided $\lim_{M \rightarrow \infty} u(M) = u(\infty)$ is defined. (The *informal* notation $u(\infty)$ is defined by that limit.)
+"""
+
+# ╔═╡ abd11bbc-70d3-11ec-157c-ad0dbc662599
+md"""  * If $f(x)$ is a probability density, then so is $(1/h) f((x-c)/h)$ for any $c, h > 0$.
+"""
+
+# ╔═╡ abd11bd0-70d3-11ec-3c16-59468f4358f9
+md"""Again, by a $u$ substitution with, now, $u(x) = (x-c)/h$, we have $du = (1/h) \cdot dx$ and the result follows just as before:
+"""
+
+# ╔═╡ abd11be4-70d3-11ec-3b84-ada641d2b48b
+md"""```math
+\int_{-\infty}^\infty \frac{1}{h}f(\frac{x-c}{h})dx = \int_{u(-\infty)}^{u(\infty)} f(u) du = \int_{-\infty}^\infty f(u) du = 1.
+```
+"""
+
+# ╔═╡ abd11c16-70d3-11ec-3311-5fab0ba60c44
+md"""  * If $F(x) = 1 - e^{-x}$, for $x \geq 0$, and $0$ otherwise,  find $f(x)$.
+"""
+
+# ╔═╡ abd11c7a-70d3-11ec-395e-474e65cf72fa
+md"""We want to just say $F'(x)= e^{-x}$ so $f(x) = e^{-x}$. But some care is needed. First, that isn't right. The derivative for $x<0$ of $F(x)$ is $0$, so $f(x) = 0$ if $x < 0$. What about for $x>0$? The derivative is $e^{-x}$, but is that the right answer? $F(x) = \int_{-\infty}^x f(u) du$, so we have to at least discuss if the $-\infty$ affects things. In this case, and in general the answer is *no*. For any $x$ we can find $M < x$ so that we have $F(x) = \int_{-\infty}^M f(u) du + \int_M^x f(u) du$. The first part is a constant, so will have derivative $0$, the second will have derivative $f(x)$, if the derivative exists (and it will exist at $x$ if the derivative is continuous in a neighborhood of $x$).
+"""
+
+# ╔═╡ abd11ca2-70d3-11ec-0f3e-c1a7b2d8dbe1
+md"""Finally, at $x=0$ we have an issue, as $F'(0)$ does not exist. The left limit of the secant line approximation is $0$, the right limit of the secant line approximation is $1$. So, we can take $f(x) = e^{-x}$ for $x > 0$ and $0$ otherwise, noting that redefining $f(x)$ at a point will not effect the integral as long as the point is finite.
+"""
+
+# ╔═╡ abd11cb4-70d3-11ec-06a3-93ff066ba29c
+md"""## Questions
+"""
+
+# ╔═╡ abd11cde-70d3-11ec-1d30-d1d2badce353
+md"""###### Question
+"""
+
+# ╔═╡ abd11cfc-70d3-11ec-172b-e5e5fdf89c82
+md"""Is $f(x) = 1/x^{100}$ integrable around $0$?
+"""
+
+# ╔═╡ abd11f52-70d3-11ec-2c43-092712524f89
+let
+	yesnoq("no")
+end
+
+# ╔═╡ abd11f72-70d3-11ec-082f-9d0321abce76
+md"""###### Question
+"""
+
+# ╔═╡ abd11f90-70d3-11ec-2a46-ed5d3d8980ce
+md"""Is $f(x) = 1/x^{1/3}$ integrable around $0$?
+"""
+
+# ╔═╡ abd1217a-70d3-11ec-3e3a-cd80e5e69a7e
+let
+	yesnoq("yes")
+end
+
+# ╔═╡ abd12198-70d3-11ec-0fce-211b262c1f81
+md"""###### Question
+"""
+
+# ╔═╡ abd121b6-70d3-11ec-2bff-df0518c033da
+md"""Is $f(x) = x\cdot\log(x)$ integrable on $[1,\infty)$?
+"""
+
+# ╔═╡ abd12382-70d3-11ec-2b89-9180d743326a
+let
+	yesnoq("no")
+end
+
+# ╔═╡ abd12396-70d3-11ec-1557-45ce5e626a2d
+md"""###### Question
+"""
+
+# ╔═╡ abd123b4-70d3-11ec-25f6-810722959b71
+md"""Is $f(x) = \log(x)/ x$ integrable on $[1,\infty)$?
+"""
+
+# ╔═╡ abd1256c-70d3-11ec-2edf-790e495f4b4f
+let
+	yesnoq("no")
+end
+
+# ╔═╡ abd12580-70d3-11ec-3ac9-7df36202f641
+md"""###### Question
+"""
+
+# ╔═╡ abd1259e-70d3-11ec-33ab-0d9383c8b3df
+md"""Is $f(x) = \log(x)$ integrable on $[1,\infty)$?
+"""
+
+# ╔═╡ abd12756-70d3-11ec-078c-3f7d70a7841e
+let
+	yesnoq("no")
+end
+
+# ╔═╡ abd12774-70d3-11ec-3581-0985b6d515d9
+md"""###### Question
+"""
+
+# ╔═╡ abd12788-70d3-11ec-10a6-0b0bff17d760
+md"""Compute the integral $\int_0^\infty 1/(1+x^2) dx$.
+"""
+
+# ╔═╡ abd12d14-70d3-11ec-2fd4-cb135084ff9a
+let
+	f(x) = 1/(1+x^2)
+	a, b= 0, Inf
+	val, _ = quadgk(f, a, b)
+	numericq(val)
+end
+
+# ╔═╡ abd12d28-70d3-11ec-3aad-432f232db01d
+md"""###### Question
+"""
+
+# ╔═╡ abd12d50-70d3-11ec-39db-8b52c56b98d9
+md"""Compute the the integral $\int_1^\infty \log(x)/x^2 dx$.
+"""
+
+# ╔═╡ abd14b32-70d3-11ec-1490-579e11c7e8f0
+let
+	f(x) =log(x)/x^2
+	a, b= 1, Inf
+	val, _ = quadgk(f, a, b)
+	numericq(val)
+end
+
+# ╔═╡ abd14b6e-70d3-11ec-2e18-e155be127c84
+md"""###### Question
+"""
+
+# ╔═╡ abd14baa-70d3-11ec-3e87-3bb981d581c0
+md"""Compute the integral $\int_0^2 (x-1)^{2/3} dx$.
+"""
+
+# ╔═╡ abd151e0-70d3-11ec-0d07-53f18f8fe6bb
+let
+	f(x) = cbrt((x-1)^2)
+	val, _ = quadgk(f , 0, 1, 2)
+	numericq(val)
+end
+
+# ╔═╡ abd15208-70d3-11ec-2836-af0c8684a85f
+md"""###### Question
+"""
+
+# ╔═╡ abd1522e-70d3-11ec-2674-4f69b4066e01
+md"""From the relationship that if $0 \leq f(x) \leq g(x)$ then $\int_a^b f(x) dx \leq \int_a^b g(x) dx$ it can be deduced that
+"""
+
+# ╔═╡ abd152e4-70d3-11ec-2fe6-f1663991b48e
+md"""  * if $\int_a^\infty f(x) dx$ diverges, then so does $\int_a^\infty g(x) dx$.
+  * if $\int_a^\infty g(x) dx$ converges, then so does $\int_a^\infty f(x) dx$.
+"""
+
+# ╔═╡ abd152f8-70d3-11ec-3a85-d3adeb1a0454
+md"""Let $f(x) = \lvert \sin(x)/x^2 \rvert$.
+"""
+
+# ╔═╡ abd15316-70d3-11ec-3f12-0bf89c6b6dda
+md"""What can you say about $\int_1^\infty f(x) dx$, as $f(x) \leq 1/x^2$ on $[1, \infty)$?
+"""
+
+# ╔═╡ abd159ba-70d3-11ec-244b-b3bb9edf0a41
+let
+	choices =[
+	"It is convergent",
+	"It is divergent",
+	"Can't say"]
+	ans = 1
+	radioq(choices, ans, keep_order=true)
+end
+
+# ╔═╡ abd159e2-70d3-11ec-0458-b960d55c41df
+md"""---
+"""
+
+# ╔═╡ abd15a00-70d3-11ec-2bdb-9b7fc264a102
+md"""Let $f(x) = \lvert \sin(x) \rvert / x$.
+"""
+
+# ╔═╡ abd15a1e-70d3-11ec-30fa-c7c3eb382e69
+md"""What can you say about $\int_1^\infty f(x) dx$, as $f(x) \leq 1/x$ on $[1, \infty)$?
+"""
+
+# ╔═╡ abd160fe-70d3-11ec-36c1-099b49391b2a
+let
+	choices =[
+	"It is convergent",
+	"It is divergent",
+	"Can't say"]
+	ans = 3
+	radioq(choices, ans, keep_order=true)
+end
+
+# ╔═╡ abd16110-70d3-11ec-2f0c-0fd2c17bd496
+md"""---
+"""
+
+# ╔═╡ abd1613a-70d3-11ec-0fd3-39e067c5096a
+md"""Let $f(x) = 1/\sqrt{x^2 - 1}$. What can you say about $\int_1^\infty f(x) dx$, as $f(x) \geq 1/x$ on $[1, \infty)$?
+"""
+
+# ╔═╡ abd167ca-70d3-11ec-2515-e334b4d9a168
+let
+	choices =[
+	"It is convergent",
+	"It is divergent",
+	"Can't say"]
+	ans = 2
+	radioq(choices, ans, keep_order=true)
+end
+
+# ╔═╡ abd167de-70d3-11ec-12a6-8f43bce9567d
+md"""---
+"""
+
+# ╔═╡ abd16806-70d3-11ec-09f1-ffef5ba96ac8
+md"""Let $f(x) = 1 + 4x^2$. What can you say about $\int_1^\infty f(x) dx$, as $f(x) \leq 1/x^2$ on $[1, \infty)$?
+"""
+
+# ╔═╡ abd16f2c-70d3-11ec-27f0-55e5917d0aca
+let
+	choices =[
+	"It is convergent",
+	"It is divergent",
+	"Can't say"]
+	ans = 2
+	radioq(choices, ans, keep_order=true)
+end
+
+# ╔═╡ abd16f5e-70d3-11ec-35e8-c9dd6c813f37
+md"""---
+"""
+
+# ╔═╡ abd17024-70d3-11ec-1988-3bd2e769c447
+md"""Let $f(x) = \lvert \sin(x)^{10}\rvert/e^x$. What can you say about $\int_1^\infty f(x) dx$, as $f(x) \leq e^{-x}$ on $[1, \infty)$?
+"""
+
+# ╔═╡ abd178fa-70d3-11ec-1151-cb7947c3bd3f
+let
+	choices =[
+	"It is convergent",
+	"It is divergent",
+	"Can't say"]
+	ans = 1
+	radioq(choices, ans, keep_order=true)
+end
+
+# ╔═╡ abd17938-70d3-11ec-0ce8-4333598467c4
+md"""###### Question
+"""
+
+# ╔═╡ abd17972-70d3-11ec-2313-7937454b2e5b
+md"""The difference between "blowing up" at $0$ versus being integrable at $\infty$ can be seen to be related through the $u$-substitution $u=1/x$. With this $u$-substitution, what becomes of $\int_0^1 x^{-2/3} dx$?
+"""
+
+# ╔═╡ abd181da-70d3-11ec-152c-6dae7c0c24b5
+let
+	choices = [
+	"``\\int_1^\\infty u^{2/3}/u^2 \\cdot du``",
+	"``\\int_0^1 u^{2/3} \\cdot du``",
+	"``\\int_0^\\infty 1/u \\cdot du``"
+	]
+	ans = 1
+	radioq(choices, ans)
+end
+
+# ╔═╡ abd181f6-70d3-11ec-31c9-bd48fbda637c
+md"""###### Question
+"""
+
+# ╔═╡ abd18214-70d3-11ec-159f-c5a93c4249d5
+md"""The antiderivative of $f(x) = 1/\pi \cdot 1/\sqrt{x(1-x)}$ is $F(x)=(2/\pi)\cdot \sin^{-1}(\sqrt{x})$.
+"""
+
+# ╔═╡ abd18228-70d3-11ec-210c-77925c3c9252
+md"""Find $\int_0^1 f(x) dx$.
+"""
+
+# ╔═╡ abd18962-70d3-11ec-2acf-13468fd59d19
+let
+	f(x) = 1/pi * 1/sqrt(x*(1-x))
+	a, b= 0, 1
+	val, _ = quadgk(f, a, b)
+	numericq(val)
+end
+
+# ╔═╡ abd1898a-70d3-11ec-09ff-db2b7f49a406
+HTML("""<div class="markdown"><blockquote>
+<p><a href="../integrals/partial_fractions.html">◅ previous</a>  <a href="../integrals/mean_value_theorem.html">▻  next</a>  <a href="../index.html">⌂ table of contents</a>  <a href="https://github.com/jverzani/CalculusWithJulia.jl/edit/master/CwJ/integrals/improper_integrals.jmd">✏ suggest an edit</a></p>
+</blockquote>
+</div>""")
+
+# ╔═╡ abd18994-70d3-11ec-27ac-e3e3a91d0356
+PlutoUI.TableOfContents()
+
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+CalculusWithJulia = "a2e0e22d-7d4c-5312-9169-8b992201a882"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
+
+[compat]
+CalculusWithJulia = "~0.0.13"
+Plots = "~1.25.4"
+PlutoUI = "~0.7.29"
+PyPlot = "~2.10.0"
+QuadGK = "~2.4.2"
+SymPy = "~1.1.2"
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.7.0"
+manifest_format = "2.0"
+
+[[deps.AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.4"
+
+[[deps.Adapt]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "af92965fb30777147966f58acb05da51c5616b5f"
+uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+version = "3.3.3"
+
+[[deps.ArgTools]]
+uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
+
+[[deps.ArrayInterface]]
+deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
+git-tree-sha1 = "1ee88c4c76caa995a885dc2f22a5d548dfbbc0ba"
+uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+version = "3.2.2"
+
+[[deps.Artifacts]]
+uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[[deps.Base64]]
+uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.Bzip2_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
+uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
+version = "1.0.8+0"
+
+[[deps.Cairo_jll]]
+deps = ["Artifacts", "Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
+git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
+uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
+version = "1.16.1+1"
+
+[[deps.CalculusWithJulia]]
+deps = ["Base64", "Contour", "EllipsisNotation", "ForwardDiff", "HCubature", "IntervalSets", "JSON", "LaTeXStrings", "LinearAlgebra", "Markdown", "Mustache", "Pkg", "PlotUtils", "Random", "RecipesBase", "Reexport", "Requires", "Roots", "SpecialFunctions", "Test"]
+git-tree-sha1 = "ae958b53cc06c6b3d5d5b0847a3d858075136417"
+uuid = "a2e0e22d-7d4c-5312-9169-8b992201a882"
+version = "0.0.13"
+
+[[deps.ChainRulesCore]]
+deps = ["Compat", "LinearAlgebra", "SparseArrays"]
+git-tree-sha1 = "926870acb6cbcf029396f2f2de030282b6bc1941"
+uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+version = "1.11.4"
+
+[[deps.ChangesOfVariables]]
+deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
+git-tree-sha1 = "bf98fa45a0a4cee295de98d4c1462be26345b9a1"
+uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
+version = "0.1.2"
+
+[[deps.ColorSchemes]]
+deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random"]
+git-tree-sha1 = "a851fec56cb73cfdf43762999ec72eff5b86882a"
+uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+version = "3.15.0"
+
+[[deps.ColorTypes]]
+deps = ["FixedPointNumbers", "Random"]
+git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
+uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+version = "0.11.0"
+
+[[deps.Colors]]
+deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
+git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
+uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
+version = "0.12.8"
+
+[[deps.Combinatorics]]
+git-tree-sha1 = "08c8b6831dc00bfea825826be0bc8336fc369860"
+uuid = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+version = "1.0.2"
+
+[[deps.CommonEq]]
+git-tree-sha1 = "d1beba82ceee6dc0fce8cb6b80bf600bbde66381"
+uuid = "3709ef60-1bee-4518-9f2f-acd86f176c50"
+version = "0.2.0"
+
+[[deps.CommonSolve]]
+git-tree-sha1 = "68a0743f578349ada8bc911a5cbd5a2ef6ed6d1f"
+uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
+version = "0.2.0"
+
+[[deps.CommonSubexpressions]]
+deps = ["MacroTools", "Test"]
+git-tree-sha1 = "7b8a93dba8af7e3b42fecabf646260105ac373f7"
+uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
+version = "0.3.0"
+
+[[deps.Compat]]
+deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
+git-tree-sha1 = "44c37b4636bc54afac5c574d2d02b625349d6582"
+uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
+version = "3.41.0"
+
+[[deps.CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+
+[[deps.Conda]]
+deps = ["Downloads", "JSON", "VersionParsing"]
+git-tree-sha1 = "6cdc8832ba11c7695f494c9d9a1c31e90959ce0f"
+uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+version = "1.6.0"
+
+[[deps.ConstructionBase]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "f74e9d5388b8620b4cee35d4c5a618dd4dc547f4"
+uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+version = "1.3.0"
+
+[[deps.Contour]]
+deps = ["StaticArrays"]
+git-tree-sha1 = "9f02045d934dc030edad45944ea80dbd1f0ebea7"
+uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
+version = "0.5.7"
+
+[[deps.DataAPI]]
+git-tree-sha1 = "cc70b17275652eb47bc9e5f81635981f13cea5c8"
+uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
+version = "1.9.0"
+
+[[deps.DataStructures]]
+deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
+git-tree-sha1 = "3daef5523dd2e769dad2365274f760ff5f282c7d"
+uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+version = "0.18.11"
+
+[[deps.DataValueInterfaces]]
+git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
+uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
+version = "1.0.0"
+
+[[deps.Dates]]
+deps = ["Printf"]
+uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[deps.DelimitedFiles]]
+deps = ["Mmap"]
+uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+
+[[deps.DiffResults]]
+deps = ["StaticArrays"]
+git-tree-sha1 = "c18e98cba888c6c25d1c3b048e4b3380ca956805"
+uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
+version = "1.0.3"
+
+[[deps.DiffRules]]
+deps = ["LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "9bc5dac3c8b6706b58ad5ce24cffd9861f07c94f"
+uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+version = "1.9.0"
+
+[[deps.Distributed]]
+deps = ["Random", "Serialization", "Sockets"]
+uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+
+[[deps.DocStringExtensions]]
+deps = ["LibGit2"]
+git-tree-sha1 = "b19534d1895d702889b219c382a6e18010797f0b"
+uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+version = "0.8.6"
+
+[[deps.Downloads]]
+deps = ["ArgTools", "LibCURL", "NetworkOptions"]
+uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
+[[deps.EarCut_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "3f3a2501fa7236e9b911e0f7a588c657e822bb6d"
+uuid = "5ae413db-bbd1-5e63-b57d-d24a61df00f5"
+version = "2.2.3+0"
+
+[[deps.EllipsisNotation]]
+deps = ["ArrayInterface"]
+git-tree-sha1 = "3fe985505b4b667e1ae303c9ca64d181f09d5c05"
+uuid = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
+version = "1.1.3"
+
+[[deps.Expat_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b3bfd02e98aedfa5cf885665493c5598c350cd2f"
+uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
+version = "2.2.10+0"
+
+[[deps.FFMPEG]]
+deps = ["FFMPEG_jll"]
+git-tree-sha1 = "b57e3acbe22f8484b4b5ff66a7499717fe1a9cc8"
+uuid = "c87230d0-a227-11e9-1b43-d7ebe4e7570a"
+version = "0.4.1"
+
+[[deps.FFMPEG_jll]]
+deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "Pkg", "Zlib_jll", "libass_jll", "libfdk_aac_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
+git-tree-sha1 = "d8a578692e3077ac998b50c0217dfd67f21d1e5f"
+uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
+version = "4.4.0+0"
+
+[[deps.FixedPointNumbers]]
+deps = ["Statistics"]
+git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
+uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
+version = "0.8.4"
+
+[[deps.Fontconfig_jll]]
+deps = ["Artifacts", "Bzip2_jll", "Expat_jll", "FreeType2_jll", "JLLWrappers", "Libdl", "Libuuid_jll", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "21efd19106a55620a188615da6d3d06cd7f6ee03"
+uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
+version = "2.13.93+0"
+
+[[deps.Formatting]]
+deps = ["Printf"]
+git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
+uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
+version = "0.4.2"
+
+[[deps.ForwardDiff]]
+deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "2b72a5624e289ee18256111657663721d59c143e"
+uuid = "f6369f11-7733-5829-9624-2563aa707210"
+version = "0.10.24"
+
+[[deps.FreeType2_jll]]
+deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "87eb71354d8ec1a96d4a7636bd57a7347dde3ef9"
+uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
+version = "2.10.4+0"
+
+[[deps.FriBidi_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
+uuid = "559328eb-81f9-559d-9380-de523a88c83c"
+version = "1.0.10+0"
+
+[[deps.Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+
+[[deps.GLFW_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
+git-tree-sha1 = "0c603255764a1fa0b61752d2bec14cfbd18f7fe8"
+uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
+version = "3.3.5+1"
+
+[[deps.GR]]
+deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
+git-tree-sha1 = "b9a93bcdf34618031891ee56aad94cfff0843753"
+uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
+version = "0.63.0"
+
+[[deps.GR_jll]]
+deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Pkg", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
+git-tree-sha1 = "f97acd98255568c3c9b416c5a3cf246c1315771b"
+uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
+version = "0.63.0+0"
+
+[[deps.GeometryBasics]]
+deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
+git-tree-sha1 = "58bcdf5ebc057b085e58d95c138725628dd7453c"
+uuid = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+version = "0.4.1"
+
+[[deps.Gettext_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "XML2_jll"]
+git-tree-sha1 = "9b02998aba7bf074d14de89f9d37ca24a1a0b046"
+uuid = "78b55507-aeef-58d4-861c-77aaff3498b1"
+version = "0.21.0+0"
+
+[[deps.Glib_jll]]
+deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE_jll", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "a32d672ac2c967f3deb8a81d828afc739c838a06"
+uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
+version = "2.68.3+2"
+
+[[deps.Graphite2_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "344bf40dcab1073aca04aa0df4fb092f920e4011"
+uuid = "3b182d85-2403-5c21-9c21-1e1f0cc25472"
+version = "1.3.14+0"
+
+[[deps.Grisu]]
+git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
+uuid = "42e2da0e-8278-4e71-bc24-59509adca0fe"
+version = "1.0.2"
+
+[[deps.HCubature]]
+deps = ["Combinatorics", "DataStructures", "LinearAlgebra", "QuadGK", "StaticArrays"]
+git-tree-sha1 = "134af3b940d1ca25b19bc9740948157cee7ff8fa"
+uuid = "19dc6840-f33b-545b-b366-655c7e3ffd49"
+version = "1.5.0"
+
+[[deps.HTTP]]
+deps = ["Base64", "Dates", "IniFile", "Logging", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
+git-tree-sha1 = "0fa77022fe4b511826b39c894c90daf5fce3334a"
+uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+version = "0.9.17"
+
+[[deps.HarfBuzz_jll]]
+deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
+git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
+uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
+version = "2.8.1+1"
+
+[[deps.Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
+[[deps.HypertextLiteral]]
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.3"
+
+[[deps.IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
+
+[[deps.IfElse]]
+git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
+uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
+version = "0.1.1"
+
+[[deps.IniFile]]
+deps = ["Test"]
+git-tree-sha1 = "098e4d2c533924c921f9f9847274f2ad89e018b8"
+uuid = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
+version = "0.5.0"
+
+[[deps.InteractiveUtils]]
+deps = ["Markdown"]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[deps.IntervalSets]]
+deps = ["Dates", "EllipsisNotation", "Statistics"]
+git-tree-sha1 = "3cc368af3f110a767ac786560045dceddfc16758"
+uuid = "8197267c-284f-5f27-9208-e0e47529a953"
+version = "0.5.3"
+
+[[deps.InverseFunctions]]
+deps = ["Test"]
+git-tree-sha1 = "a7254c0acd8e62f1ac75ad24d5db43f5f19f3c65"
+uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
+version = "0.1.2"
+
+[[deps.IrrationalConstants]]
+git-tree-sha1 = "7fd44fd4ff43fc60815f8e764c0f352b83c49151"
+uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
+version = "0.1.1"
+
+[[deps.IterTools]]
+git-tree-sha1 = "fa6287a4469f5e048d763df38279ee729fbd44e5"
+uuid = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
+version = "1.4.0"
+
+[[deps.IteratorInterfaceExtensions]]
+git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
+uuid = "82899510-4779-5014-852e-03e436cf321d"
+version = "1.0.0"
+
+[[deps.JLLWrappers]]
+deps = ["Preferences"]
+git-tree-sha1 = "642a199af8b68253517b80bd3bfd17eb4e84df6e"
+uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+version = "1.3.0"
+
+[[deps.JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "8076680b162ada2a031f707ac7b4953e30667a37"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.2"
+
+[[deps.JpegTurbo_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "d735490ac75c5cb9f1b00d8b5509c11984dc6943"
+uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
+version = "2.1.0+0"
+
+[[deps.LAME_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "f6250b16881adf048549549fba48b1161acdac8c"
+uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
+version = "3.100.1+0"
+
+[[deps.LZO_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "e5b909bcf985c5e2605737d2ce278ed791b89be6"
+uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
+version = "2.10.1+0"
+
+[[deps.LaTeXStrings]]
+git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
+uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+version = "1.3.0"
+
+[[deps.Latexify]]
+deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
+git-tree-sha1 = "a8f4f279b6fa3c3c4f1adadd78a621b13a506bce"
+uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
+version = "0.15.9"
+
+[[deps.LibCURL]]
+deps = ["LibCURL_jll", "MozillaCACerts_jll"]
+uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
+
+[[deps.LibCURL_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
+uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
+
+[[deps.LibGit2]]
+deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[deps.LibSSH2_jll]]
+deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
+uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
+
+[[deps.Libdl]]
+uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[[deps.Libffi_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "0b4a5d71f3e5200a7dff793393e09dfc2d874290"
+uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
+version = "3.2.2+1"
+
+[[deps.Libgcrypt_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll", "Pkg"]
+git-tree-sha1 = "64613c82a59c120435c067c2b809fc61cf5166ae"
+uuid = "d4300ac3-e22c-5743-9152-c294e39db1e4"
+version = "1.8.7+0"
+
+[[deps.Libglvnd_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll", "Xorg_libXext_jll"]
+git-tree-sha1 = "7739f837d6447403596a75d19ed01fd08d6f56bf"
+uuid = "7e76a0d4-f3c7-5321-8279-8d96eeed0f29"
+version = "1.3.0+3"
+
+[[deps.Libgpg_error_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "c333716e46366857753e273ce6a69ee0945a6db9"
+uuid = "7add5ba3-2f88-524e-9cd5-f83b8a55f7b8"
+version = "1.42.0+0"
+
+[[deps.Libiconv_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "42b62845d70a619f063a7da093d995ec8e15e778"
+uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
+version = "1.16.1+1"
+
+[[deps.Libmount_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "9c30530bf0effd46e15e0fdcf2b8636e78cbbd73"
+uuid = "4b2f31a3-9ecc-558c-b454-b3730dcb73e9"
+version = "2.35.0+0"
+
+[[deps.Libtiff_jll]]
+deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Pkg", "Zlib_jll", "Zstd_jll"]
+git-tree-sha1 = "340e257aada13f95f98ee352d316c3bed37c8ab9"
+uuid = "89763e89-9b03-5906-acba-b20f662cd828"
+version = "4.3.0+0"
+
+[[deps.Libuuid_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "7f3efec06033682db852f8b3bc3c1d2b0a0ab066"
+uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
+version = "2.36.0+0"
+
+[[deps.LinearAlgebra]]
+deps = ["Libdl", "libblastrampoline_jll"]
+uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[[deps.LogExpFunctions]]
+deps = ["ChainRulesCore", "ChangesOfVariables", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
+git-tree-sha1 = "e5718a00af0ab9756305a0392832c8952c7426c1"
+uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
+version = "0.3.6"
+
+[[deps.Logging]]
+uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[deps.MacroTools]]
+deps = ["Markdown", "Random"]
+git-tree-sha1 = "3d3e902b31198a27340d0bf00d6ac452866021cf"
+uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+version = "0.5.9"
+
+[[deps.Markdown]]
+deps = ["Base64"]
+uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+
+[[deps.MbedTLS]]
+deps = ["Dates", "MbedTLS_jll", "Random", "Sockets"]
+git-tree-sha1 = "1c38e51c3d08ef2278062ebceade0e46cefc96fe"
+uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
+version = "1.0.3"
+
+[[deps.MbedTLS_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+
+[[deps.Measures]]
+git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
+uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
+version = "0.3.1"
+
+[[deps.Missings]]
+deps = ["DataAPI"]
+git-tree-sha1 = "bf210ce90b6c9eed32d25dbcae1ebc565df2687f"
+uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
+version = "1.0.2"
+
+[[deps.Mmap]]
+uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[[deps.MozillaCACerts_jll]]
+uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
+
+[[deps.Mustache]]
+deps = ["Printf", "Tables"]
+git-tree-sha1 = "21d7a05c3b94bcf45af67beccab4f2a1f4a3c30a"
+uuid = "ffc61752-8dc7-55ee-8c37-f3e9cdd09e70"
+version = "1.0.12"
+
+[[deps.NaNMath]]
+git-tree-sha1 = "f755f36b19a5116bb580de457cda0c140153f283"
+uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
+version = "0.3.6"
+
+[[deps.NetworkOptions]]
+uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
+[[deps.Ogg_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
+uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
+version = "1.3.5+1"
+
+[[deps.OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+
+[[deps.OpenLibm_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
+
+[[deps.OpenSSL_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "15003dcb7d8db3c6c857fda14891a539a8f2705a"
+uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
+version = "1.1.10+0"
+
+[[deps.OpenSpecFun_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
+uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
+version = "0.5.5+0"
+
+[[deps.Opus_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "51a08fb14ec28da2ec7a927c4337e4332c2a4720"
+uuid = "91d4177d-7536-5919-b921-800302f37372"
+version = "1.3.2+0"
+
+[[deps.OrderedCollections]]
+git-tree-sha1 = "85f8e6578bf1f9ee0d11e7bb1b1456435479d47c"
+uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+version = "1.4.1"
+
+[[deps.PCRE_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b2a7af664e098055a7529ad1a900ded962bca488"
+uuid = "2f80f16e-611a-54ab-bc61-aa92de5b98fc"
+version = "8.44.0+0"
+
+[[deps.Parsers]]
+deps = ["Dates"]
+git-tree-sha1 = "d7fa6237da8004be601e19bd6666083056649918"
+uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+version = "2.1.3"
+
+[[deps.Pixman_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b4f5d02549a10e20780a24fce72bea96b6329e29"
+uuid = "30392449-352a-5448-841d-b1acce4e97dc"
+version = "0.40.1+0"
+
+[[deps.Pkg]]
+deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[[deps.PlotThemes]]
+deps = ["PlotUtils", "Requires", "Statistics"]
+git-tree-sha1 = "a3a964ce9dc7898193536002a6dd892b1b5a6f1d"
+uuid = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
+version = "2.0.1"
+
+[[deps.PlotUtils]]
+deps = ["ColorSchemes", "Colors", "Dates", "Printf", "Random", "Reexport", "Statistics"]
+git-tree-sha1 = "68604313ed59f0408313228ba09e79252e4b2da8"
+uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
+version = "1.1.2"
+
+[[deps.Plots]]
+deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "Unzip"]
+git-tree-sha1 = "71d65e9242935132e71c4fbf084451579491166a"
+uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+version = "1.25.4"
+
+[[deps.PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "7711172ace7c40dc8449b7aed9d2d6f1cf56a5bd"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.29"
+
+[[deps.Preferences]]
+deps = ["TOML"]
+git-tree-sha1 = "2cf929d64681236a2e074ffafb8d568733d2e6af"
+uuid = "21216c6a-2e73-6563-6e65-726566657250"
+version = "1.2.3"
+
+[[deps.Printf]]
+deps = ["Unicode"]
+uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[deps.PyCall]]
+deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
+git-tree-sha1 = "71fd4022ecd0c6d20180e23ff1b3e05a143959c2"
+uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+version = "1.93.0"
+
+[[deps.PyPlot]]
+deps = ["Colors", "LaTeXStrings", "PyCall", "Sockets", "Test", "VersionParsing"]
+git-tree-sha1 = "14c1b795b9d764e1784713941e787e1384268103"
+uuid = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+version = "2.10.0"
+
+[[deps.Qt5Base_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "xkbcommon_jll"]
+git-tree-sha1 = "ad368663a5e20dbb8d6dc2fddeefe4dae0781ae8"
+uuid = "ea2cea3b-5b76-57ae-a6ef-0a8af62496e1"
+version = "5.15.3+0"
+
+[[deps.QuadGK]]
+deps = ["DataStructures", "LinearAlgebra"]
+git-tree-sha1 = "78aadffb3efd2155af139781b8a8df1ef279ea39"
+uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+version = "2.4.2"
+
+[[deps.REPL]]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
+uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+
+[[deps.Random]]
+deps = ["SHA", "Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[deps.RecipesBase]]
+git-tree-sha1 = "6bf3f380ff52ce0832ddd3a2a7b9538ed1bcca7d"
+uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+version = "1.2.1"
+
+[[deps.RecipesPipeline]]
+deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
+git-tree-sha1 = "7ad0dfa8d03b7bcf8c597f59f5292801730c55b8"
+uuid = "01d81517-befc-4cb6-b9ec-a95719d0359c"
+version = "0.4.1"
+
+[[deps.Reexport]]
+git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
+uuid = "189a3867-3050-52da-a836-e630ba90ab69"
+version = "1.2.2"
+
+[[deps.Requires]]
+deps = ["UUIDs"]
+git-tree-sha1 = "8f82019e525f4d5c669692772a6f4b0a58b06a6a"
+uuid = "ae029012-a4dd-5104-9daa-d747884805df"
+version = "1.2.0"
+
+[[deps.Roots]]
+deps = ["CommonSolve", "Printf", "Setfield"]
+git-tree-sha1 = "0abe7fc220977da88ad86d339335a4517944fea2"
+uuid = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
+version = "1.3.14"
+
+[[deps.SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[[deps.Scratch]]
+deps = ["Dates"]
+git-tree-sha1 = "0b4b7f1393cff97c33891da2a0bf69c6ed241fda"
+uuid = "6c6a2e73-6563-6170-7368-637461726353"
+version = "1.1.0"
+
+[[deps.Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[deps.Setfield]]
+deps = ["ConstructionBase", "Future", "MacroTools", "Requires"]
+git-tree-sha1 = "0afd9e6c623e379f593da01f20590bacc26d1d14"
+uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+version = "0.8.1"
+
+[[deps.SharedArrays]]
+deps = ["Distributed", "Mmap", "Random", "Serialization"]
+uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
+
+[[deps.Showoff]]
+deps = ["Dates", "Grisu"]
+git-tree-sha1 = "91eddf657aca81df9ae6ceb20b959ae5653ad1de"
+uuid = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
+version = "1.0.3"
+
+[[deps.Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+
+[[deps.SortingAlgorithms]]
+deps = ["DataStructures"]
+git-tree-sha1 = "b3363d7460f7d098ca0912c69b082f75625d7508"
+uuid = "a2af1166-a08f-5f64-846c-94a0d3cef48c"
+version = "1.0.1"
+
+[[deps.SparseArrays]]
+deps = ["LinearAlgebra", "Random"]
+uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[[deps.SpecialFunctions]]
+deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
+git-tree-sha1 = "f0bccf98e16759818ffc5d97ac3ebf87eb950150"
+uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
+version = "1.8.1"
+
+[[deps.Static]]
+deps = ["IfElse"]
+git-tree-sha1 = "7f5a513baec6f122401abfc8e9c074fdac54f6c1"
+uuid = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
+version = "0.4.1"
+
+[[deps.StaticArrays]]
+deps = ["LinearAlgebra", "Random", "Statistics"]
+git-tree-sha1 = "88a559da57529581472320892576a486fa2377b9"
+uuid = "90137ffa-7385-5640-81b9-e52037218182"
+version = "1.3.1"
+
+[[deps.Statistics]]
+deps = ["LinearAlgebra", "SparseArrays"]
+uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[[deps.StatsAPI]]
+git-tree-sha1 = "d88665adc9bcf45903013af0982e2fd05ae3d0a6"
+uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
+version = "1.2.0"
+
+[[deps.StatsBase]]
+deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
+git-tree-sha1 = "51383f2d367eb3b444c961d485c565e4c0cf4ba0"
+uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+version = "0.33.14"
+
+[[deps.StructArrays]]
+deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
+git-tree-sha1 = "2ce41e0d042c60ecd131e9fb7154a3bfadbf50d3"
+uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
+version = "0.6.3"
+
+[[deps.SymPy]]
+deps = ["CommonEq", "CommonSolve", "Latexify", "LinearAlgebra", "Markdown", "PyCall", "RecipesBase", "SpecialFunctions"]
+git-tree-sha1 = "8f8d948ed59ae681551d184b93a256d0d5dd4eae"
+uuid = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
+version = "1.1.2"
+
+[[deps.TOML]]
+deps = ["Dates"]
+uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[[deps.TableTraits]]
+deps = ["IteratorInterfaceExtensions"]
+git-tree-sha1 = "c06b2f539df1c6efa794486abfb6ed2022561a39"
+uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
+version = "1.0.1"
+
+[[deps.Tables]]
+deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "LinearAlgebra", "TableTraits", "Test"]
+git-tree-sha1 = "bb1064c9a84c52e277f1096cf41434b675cd368b"
+uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+version = "1.6.1"
+
+[[deps.Tar]]
+deps = ["ArgTools", "SHA"]
+uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+
+[[deps.Test]]
+deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
+uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[deps.URIs]]
+git-tree-sha1 = "97bbe755a53fe859669cd907f2d96aee8d2c1355"
+uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+version = "1.3.0"
+
+[[deps.UUIDs]]
+deps = ["Random", "SHA"]
+uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[[deps.Unicode]]
+uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[deps.UnicodeFun]]
+deps = ["REPL"]
+git-tree-sha1 = "53915e50200959667e78a92a418594b428dffddf"
+uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
+version = "0.4.1"
+
+[[deps.Unzip]]
+git-tree-sha1 = "34db80951901073501137bdbc3d5a8e7bbd06670"
+uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
+version = "0.1.2"
+
+[[deps.VersionParsing]]
+git-tree-sha1 = "e575cf85535c7c3292b4d89d89cc29e8c3098e47"
+uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
+version = "1.2.1"
+
+[[deps.Wayland_jll]]
+deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
+git-tree-sha1 = "3e61f0b86f90dacb0bc0e73a0c5a83f6a8636e23"
+uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
+version = "1.19.0+0"
+
+[[deps.Wayland_protocols_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "66d72dc6fcc86352f01676e8f0f698562e60510f"
+uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
+version = "1.23.0+0"
+
+[[deps.XML2_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "1acf5bdf07aa0907e0a37d3718bb88d4b687b74a"
+uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
+version = "2.9.12+0"
+
+[[deps.XSLT_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]
+git-tree-sha1 = "91844873c4085240b95e795f692c4cec4d805f8a"
+uuid = "aed1982a-8fda-507f-9586-7b0439959a61"
+version = "1.1.34+0"
+
+[[deps.Xorg_libX11_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxcb_jll", "Xorg_xtrans_jll"]
+git-tree-sha1 = "5be649d550f3f4b95308bf0183b82e2582876527"
+uuid = "4f6342f7-b3d2-589e-9d20-edeb45f2b2bc"
+version = "1.6.9+4"
+
+[[deps.Xorg_libXau_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "4e490d5c960c314f33885790ed410ff3a94ce67e"
+uuid = "0c0b7dd1-d40b-584c-a123-a41640f87eec"
+version = "1.0.9+4"
+
+[[deps.Xorg_libXcursor_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXfixes_jll", "Xorg_libXrender_jll"]
+git-tree-sha1 = "12e0eb3bc634fa2080c1c37fccf56f7c22989afd"
+uuid = "935fb764-8cf2-53bf-bb30-45bb1f8bf724"
+version = "1.2.0+4"
+
+[[deps.Xorg_libXdmcp_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "4fe47bd2247248125c428978740e18a681372dd4"
+uuid = "a3789734-cfe1-5b06-b2d0-1dd0d9d62d05"
+version = "1.1.3+4"
+
+[[deps.Xorg_libXext_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
+git-tree-sha1 = "b7c0aa8c376b31e4852b360222848637f481f8c3"
+uuid = "1082639a-0dae-5f34-9b06-72781eeb8cb3"
+version = "1.3.4+4"
+
+[[deps.Xorg_libXfixes_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
+git-tree-sha1 = "0e0dc7431e7a0587559f9294aeec269471c991a4"
+uuid = "d091e8ba-531a-589c-9de9-94069b037ed8"
+version = "5.0.3+4"
+
+[[deps.Xorg_libXi_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll", "Xorg_libXfixes_jll"]
+git-tree-sha1 = "89b52bc2160aadc84d707093930ef0bffa641246"
+uuid = "a51aa0fd-4e3c-5386-b890-e753decda492"
+version = "1.7.10+4"
+
+[[deps.Xorg_libXinerama_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll"]
+git-tree-sha1 = "26be8b1c342929259317d8b9f7b53bf2bb73b123"
+uuid = "d1454406-59df-5ea1-beac-c340f2130bc3"
+version = "1.1.4+4"
+
+[[deps.Xorg_libXrandr_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll"]
+git-tree-sha1 = "34cea83cb726fb58f325887bf0612c6b3fb17631"
+uuid = "ec84b674-ba8e-5d96-8ba1-2a689ba10484"
+version = "1.5.2+4"
+
+[[deps.Xorg_libXrender_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
+git-tree-sha1 = "19560f30fd49f4d4efbe7002a1037f8c43d43b96"
+uuid = "ea2f1a96-1ddc-540d-b46f-429655e07cfa"
+version = "0.9.10+4"
+
+[[deps.Xorg_libpthread_stubs_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "6783737e45d3c59a4a4c4091f5f88cdcf0908cbb"
+uuid = "14d82f49-176c-5ed1-bb49-ad3f5cbd8c74"
+version = "0.1.0+3"
+
+[[deps.Xorg_libxcb_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "XSLT_jll", "Xorg_libXau_jll", "Xorg_libXdmcp_jll", "Xorg_libpthread_stubs_jll"]
+git-tree-sha1 = "daf17f441228e7a3833846cd048892861cff16d6"
+uuid = "c7cfdc94-dc32-55de-ac96-5a1b8d977c5b"
+version = "1.13.0+3"
+
+[[deps.Xorg_libxkbfile_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
+git-tree-sha1 = "926af861744212db0eb001d9e40b5d16292080b2"
+uuid = "cc61e674-0454-545c-8b26-ed2c68acab7a"
+version = "1.1.0+4"
+
+[[deps.Xorg_xcb_util_image_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
+git-tree-sha1 = "0fab0a40349ba1cba2c1da699243396ff8e94b97"
+uuid = "12413925-8142-5f55-bb0e-6d7ca50bb09b"
+version = "0.4.0+1"
+
+[[deps.Xorg_xcb_util_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxcb_jll"]
+git-tree-sha1 = "e7fd7b2881fa2eaa72717420894d3938177862d1"
+uuid = "2def613f-5ad1-5310-b15b-b15d46f528f5"
+version = "0.4.0+1"
+
+[[deps.Xorg_xcb_util_keysyms_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
+git-tree-sha1 = "d1151e2c45a544f32441a567d1690e701ec89b00"
+uuid = "975044d2-76e6-5fbe-bf08-97ce7c6574c7"
+version = "0.4.0+1"
+
+[[deps.Xorg_xcb_util_renderutil_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
+git-tree-sha1 = "dfd7a8f38d4613b6a575253b3174dd991ca6183e"
+uuid = "0d47668e-0667-5a69-a72c-f761630bfb7e"
+version = "0.3.9+1"
+
+[[deps.Xorg_xcb_util_wm_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
+git-tree-sha1 = "e78d10aab01a4a154142c5006ed44fd9e8e31b67"
+uuid = "c22f9ab0-d5fe-5066-847c-f4bb1cd4e361"
+version = "0.4.1+1"
+
+[[deps.Xorg_xkbcomp_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxkbfile_jll"]
+git-tree-sha1 = "4bcbf660f6c2e714f87e960a171b119d06ee163b"
+uuid = "35661453-b289-5fab-8a00-3d9160c6a3a4"
+version = "1.4.2+4"
+
+[[deps.Xorg_xkeyboard_config_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xkbcomp_jll"]
+git-tree-sha1 = "5c8424f8a67c3f2209646d4425f3d415fee5931d"
+uuid = "33bec58e-1273-512f-9401-5d533626f822"
+version = "2.27.0+4"
+
+[[deps.Xorg_xtrans_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "79c31e7844f6ecf779705fbc12146eb190b7d845"
+uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
+version = "1.4.0+3"
+
+[[deps.Zlib_jll]]
+deps = ["Libdl"]
+uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+
+[[deps.Zstd_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "cc4bf3fdde8b7e3e9fa0351bdeedba1cf3b7f6e6"
+uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
+version = "1.5.0+0"
+
+[[deps.libass_jll]]
+deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "5982a94fcba20f02f42ace44b9894ee2b140fe47"
+uuid = "0ac62f75-1d6f-5e53-bd7c-93b484bb37c0"
+version = "0.15.1+0"
+
+[[deps.libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+
+[[deps.libfdk_aac_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "daacc84a041563f965be61859a36e17c4e4fcd55"
+uuid = "f638f0a6-7fb0-5443-88ba-1cc74229b280"
+version = "2.0.2+0"
+
+[[deps.libpng_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "94d180a6d2b5e55e447e2d27a29ed04fe79eb30c"
+uuid = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
+version = "1.6.38+0"
+
+[[deps.libvorbis_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Ogg_jll", "Pkg"]
+git-tree-sha1 = "c45f4e40e7aafe9d086379e5578947ec8b95a8fb"
+uuid = "f27f6e37-5d2b-51aa-960f-b287f2bc3b7a"
+version = "1.3.7+0"
+
+[[deps.nghttp2_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
+
+[[deps.p7zip_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
+
+[[deps.x264_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "4fea590b89e6ec504593146bf8b988b2c00922b2"
+uuid = "1270edf5-f2f9-52d2-97e9-ab00b5d0237a"
+version = "2021.5.5+0"
+
+[[deps.x265_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "ee567a171cce03570d77ad3a43e90218e38937a9"
+uuid = "dfaa095f-4041-5dcd-9319-2fabd8486b76"
+version = "3.5.0+0"
+
+[[deps.xkbcommon_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll", "Wayland_protocols_jll", "Xorg_libxcb_jll", "Xorg_xkeyboard_config_jll"]
+git-tree-sha1 = "ece2350174195bb31de1a63bea3a41ae1aa593b6"
+uuid = "d8fb68d0-12a3-5cfd-a85a-d49703b185fd"
+version = "0.9.1+5"
+"""
+
+# ╔═╡ Cell order:
+# ╟─abd1896c-70d3-11ec-3b3a-05585773b04a
+# ╟─abd0b7e4-70d3-11ec-13fd-41863fdf7d74
+# ╟─abd0b816-70d3-11ec-2a07-2b6c8206d57b
+# ╠═abd0bdac-70d3-11ec-2c74-c758d34f3893
+# ╟─abd0c0f4-70d3-11ec-03b8-6f29b73a25be
+# ╟─abd0c11c-70d3-11ec-20e9-990c96a5b43f
+# ╟─abd0c16c-70d3-11ec-3e34-0f1edb495e95
+# ╟─abd0c180-70d3-11ec-28ad-997cc54aefff
+# ╟─abd0ee42-70d3-11ec-38eb-f561ce215b52
+# ╟─abd0ee80-70d3-11ec-2e87-9938f53548fe
+# ╟─abd0eea8-70d3-11ec-29d7-abe75cf269b9
+# ╟─abd0eebc-70d3-11ec-0527-59d55a335ec9
+# ╟─abd0eeda-70d3-11ec-1989-a19d6bfe89f3
+# ╟─abd0ef02-70d3-11ec-3b82-2f648b200fdb
+# ╟─abd0ef20-70d3-11ec-2aee-35603e895a37
+# ╟─abd0ef46-70d3-11ec-3dc5-ddc30a8b5b61
+# ╟─abd0ef66-70d3-11ec-28a9-b58e12dfa17a
+# ╟─abd0ef78-70d3-11ec-3491-db85dda7b282
+# ╟─abd0efa2-70d3-11ec-2eea-dda776c9f61e
+# ╟─abd0efb6-70d3-11ec-0783-6dd1f079a97d
+# ╟─abd0f574-70d3-11ec-08f9-cd0562c2aa26
+# ╟─abd0f5b0-70d3-11ec-19a8-bfbacebc4cd5
+# ╟─abd0f6a0-70d3-11ec-3802-bf274244d60d
+# ╟─abd0f77c-70d3-11ec-3c7e-3f605c8b1bad
+# ╟─abd0f7c2-70d3-11ec-0268-6134ae03aa5f
+# ╟─abd0f7d6-70d3-11ec-15b5-3752482dd7a2
+# ╟─abd0f7f4-70d3-11ec-12ee-9dab2d2c4b4d
+# ╟─abd0f830-70d3-11ec-1b6b-4f5cbcc1b70a
+# ╟─abd0f84e-70d3-11ec-2d72-fd5b16a8b802
+# ╟─abd0f876-70d3-11ec-1857-d5d0c4601f28
+# ╟─abd0f8b2-70d3-11ec-1ce6-17338341663e
+# ╟─abd0f8c6-70d3-11ec-3a3f-633c30272f37
+# ╟─abd0f8e4-70d3-11ec-03dd-9f177edb9823
+# ╟─abd0f9fc-70d3-11ec-0868-13f8379cc275
+# ╟─abd0fa2e-70d3-11ec-0dec-4d4ffa4ab72b
+# ╟─abd0fa4c-70d3-11ec-2bca-e3daea46cfc7
+# ╟─abd0fa54-70d3-11ec-3f1b-3f9cbb39632a
+# ╟─abd0fa6a-70d3-11ec-1ab3-af10490adcdd
+# ╟─abd0face-70d3-11ec-016b-fdaeccac9f76
+# ╠═abd0fe5a-70d3-11ec-28d8-85b7d3434345
+# ╟─abd0fea2-70d3-11ec-17f9-a5b968af6409
+# ╟─abd0fede-70d3-11ec-0b43-a1e2888acaa2
+# ╠═abd10438-70d3-11ec-0f69-e3fb61bad456
+# ╟─abd10460-70d3-11ec-167d-e5d5c3e338f7
+# ╟─abd1047e-70d3-11ec-1b79-2fbe634568ba
+# ╟─abd1049e-70d3-11ec-36c1-11c31bc88d04
+# ╟─abd104b0-70d3-11ec-281c-11c1c2dbb570
+# ╟─abd104d8-70d3-11ec-3236-3fe62ca265ad
+# ╟─abd104ec-70d3-11ec-237a-29ca29f451db
+# ╟─abd1055a-70d3-11ec-0c6a-4145bfde2c43
+# ╟─abd1056e-70d3-11ec-1447-b7229d33723c
+# ╟─abd10f1e-70d3-11ec-31dd-5f9507e89fcc
+# ╟─abd10f96-70d3-11ec-1b79-81ed9175b08e
+# ╟─abd10fac-70d3-11ec-1b18-c7d5c55e1474
+# ╟─abd10fd2-70d3-11ec-147a-01e2f053f955
+# ╟─abd11036-70d3-11ec-1737-63026699eb8d
+# ╠═abd1137e-70d3-11ec-00fd-8de982eb3142
+# ╟─abd113d8-70d3-11ec-09fa-9b2588839a69
+# ╟─abd113f6-70d3-11ec-21ff-c142e9e58ce5
+# ╟─abd11416-70d3-11ec-118a-6fba45b1673c
+# ╟─abd11432-70d3-11ec-2af6-4b88abbf53ca
+# ╟─abd11444-70d3-11ec-0b5e-37e409c64d46
+# ╟─abd1146e-70d3-11ec-3daf-07d642815238
+# ╠═abd1195a-70d3-11ec-3ef3-e3ad6007a4bf
+# ╟─abd11996-70d3-11ec-2615-9725bdc31963
+# ╟─abd119b2-70d3-11ec-2128-d3c54a38d7ec
+# ╟─abd119d2-70d3-11ec-1262-f1d01701f103
+# ╟─abd119dc-70d3-11ec-25f5-fdf70def9f1b
+# ╟─abd11a22-70d3-11ec-2af7-7191b86cc390
+# ╟─abd11a40-70d3-11ec-2e34-0383baf4f6a9
+# ╟─abd11a54-70d3-11ec-28ba-a106073086b9
+# ╟─abd11a68-70d3-11ec-1c24-9fb3a043da75
+# ╟─abd11aa4-70d3-11ec-1254-49797f17f962
+# ╟─abd11acc-70d3-11ec-002e-d30d1351deb0
+# ╟─abd11ae0-70d3-11ec-179f-1d5567d9786a
+# ╟─abd11afe-70d3-11ec-29ff-d595144a7452
+# ╟─abd11b3a-70d3-11ec-27b5-33eeb227d12d
+# ╟─abd11b4c-70d3-11ec-2afe-8181cc2b8272
+# ╟─abd11b62-70d3-11ec-3283-e93074c7859e
+# ╟─abd11b7e-70d3-11ec-395f-ab970134657b
+# ╟─abd11bbc-70d3-11ec-157c-ad0dbc662599
+# ╟─abd11bd0-70d3-11ec-3c16-59468f4358f9
+# ╟─abd11be4-70d3-11ec-3b84-ada641d2b48b
+# ╟─abd11c16-70d3-11ec-3311-5fab0ba60c44
+# ╟─abd11c7a-70d3-11ec-395e-474e65cf72fa
+# ╟─abd11ca2-70d3-11ec-0f3e-c1a7b2d8dbe1
+# ╟─abd11cb4-70d3-11ec-06a3-93ff066ba29c
+# ╟─abd11cde-70d3-11ec-1d30-d1d2badce353
+# ╟─abd11cfc-70d3-11ec-172b-e5e5fdf89c82
+# ╟─abd11f52-70d3-11ec-2c43-092712524f89
+# ╟─abd11f72-70d3-11ec-082f-9d0321abce76
+# ╟─abd11f90-70d3-11ec-2a46-ed5d3d8980ce
+# ╟─abd1217a-70d3-11ec-3e3a-cd80e5e69a7e
+# ╟─abd12198-70d3-11ec-0fce-211b262c1f81
+# ╟─abd121b6-70d3-11ec-2bff-df0518c033da
+# ╟─abd12382-70d3-11ec-2b89-9180d743326a
+# ╟─abd12396-70d3-11ec-1557-45ce5e626a2d
+# ╟─abd123b4-70d3-11ec-25f6-810722959b71
+# ╟─abd1256c-70d3-11ec-2edf-790e495f4b4f
+# ╟─abd12580-70d3-11ec-3ac9-7df36202f641
+# ╟─abd1259e-70d3-11ec-33ab-0d9383c8b3df
+# ╟─abd12756-70d3-11ec-078c-3f7d70a7841e
+# ╟─abd12774-70d3-11ec-3581-0985b6d515d9
+# ╟─abd12788-70d3-11ec-10a6-0b0bff17d760
+# ╟─abd12d14-70d3-11ec-2fd4-cb135084ff9a
+# ╟─abd12d28-70d3-11ec-3aad-432f232db01d
+# ╟─abd12d50-70d3-11ec-39db-8b52c56b98d9
+# ╟─abd14b32-70d3-11ec-1490-579e11c7e8f0
+# ╟─abd14b6e-70d3-11ec-2e18-e155be127c84
+# ╟─abd14baa-70d3-11ec-3e87-3bb981d581c0
+# ╟─abd151e0-70d3-11ec-0d07-53f18f8fe6bb
+# ╟─abd15208-70d3-11ec-2836-af0c8684a85f
+# ╟─abd1522e-70d3-11ec-2674-4f69b4066e01
+# ╟─abd152e4-70d3-11ec-2fe6-f1663991b48e
+# ╟─abd152f8-70d3-11ec-3a85-d3adeb1a0454
+# ╟─abd15316-70d3-11ec-3f12-0bf89c6b6dda
+# ╟─abd159ba-70d3-11ec-244b-b3bb9edf0a41
+# ╟─abd159e2-70d3-11ec-0458-b960d55c41df
+# ╟─abd15a00-70d3-11ec-2bdb-9b7fc264a102
+# ╟─abd15a1e-70d3-11ec-30fa-c7c3eb382e69
+# ╟─abd160fe-70d3-11ec-36c1-099b49391b2a
+# ╟─abd16110-70d3-11ec-2f0c-0fd2c17bd496
+# ╟─abd1613a-70d3-11ec-0fd3-39e067c5096a
+# ╟─abd167ca-70d3-11ec-2515-e334b4d9a168
+# ╟─abd167de-70d3-11ec-12a6-8f43bce9567d
+# ╟─abd16806-70d3-11ec-09f1-ffef5ba96ac8
+# ╟─abd16f2c-70d3-11ec-27f0-55e5917d0aca
+# ╟─abd16f5e-70d3-11ec-35e8-c9dd6c813f37
+# ╟─abd17024-70d3-11ec-1988-3bd2e769c447
+# ╟─abd178fa-70d3-11ec-1151-cb7947c3bd3f
+# ╟─abd17938-70d3-11ec-0ce8-4333598467c4
+# ╟─abd17972-70d3-11ec-2313-7937454b2e5b
+# ╟─abd181da-70d3-11ec-152c-6dae7c0c24b5
+# ╟─abd181f6-70d3-11ec-31c9-bd48fbda637c
+# ╟─abd18214-70d3-11ec-159f-c5a93c4249d5
+# ╟─abd18228-70d3-11ec-210c-77925c3c9252
+# ╟─abd18962-70d3-11ec-2acf-13468fd59d19
+# ╟─abd1898a-70d3-11ec-09ff-db2b7f49a406
+# ╟─abd1898a-70d3-11ec-1c6f-93c7bb9212ff
+# ╟─abd18994-70d3-11ec-27ac-e3e3a91d0356
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

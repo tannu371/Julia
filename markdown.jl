@@ -18,20 +18,13 @@ md"""
 
 `Literals`
 
-``\LaTeX``
+``\LaTeX`` 
 
 """
 
 # ╔═╡ 19fad75e-b41b-41c2-bb4b-ba59fccc60ee
 md"""
-### Latex
-Start Learning ``\JuLiA``.
-
-``\LaTeX`` with same syntax.
-
 Have fun learning ``JuLiA``.
-
-I'm sure you'll love ``\\JuLiA``.
 """
 
 # ╔═╡ 84633f7f-0e3b-4537-97f9-3fd3a4024274
@@ -176,7 +169,7 @@ md"""
 md"""
 ### Admonitions
 !!! note
-	This is to note
+	`\ + tab_key` - display unicode chacter 
 !!! info
 	This is to inform
 !!! tip
